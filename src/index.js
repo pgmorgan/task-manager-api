@@ -1,5 +1,6 @@
 const express = require("express")
 const bcrypt = require("bcryptjs")
+const jwt = require("jsonwebtoken")
 require("./db/mongoose")
 const User = require("./models/user")
 const Task = require("./models/task")
@@ -18,5 +19,8 @@ app.listen(port, () => {
 })
 
 const myFunction = async () => {
-
+    const token = jwt.sign({ _id: "abc123" }, "randomSetOfCharacters")
+    console.log(token)
 }
+
+myFunction()

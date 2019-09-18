@@ -1,10 +1,29 @@
 const express = require("express")
 const Task = require("../models/task")
+const auth = require("../middleware/auth")
 const router = new express.Router()
 
-router.delete("/tasks/:id", async (req, res) => {
+router.post('/tasks', auth, async (req, res) => {
+    const task = new Task({
+        /*  ES6 spread operator is like what Todd McCleod calls "Unfurling" in Golang.
+        **  It grabs all of the properties from "req.body" in this case and copies them
+        **  to this object.  Here we're copying the 'description' and 'completed' properties.
+        */
+        ...req.body,
+        owner:      req.user._id
+    })
+
     try {
-        const task = await Task.findByIdAndDelete(req.params.id)
+        await task.save()
+        res.status(201).send(task)
+    } catch (e) {
+        res.status(400).send(error)
+    }
+})
+
+router.delete("/tasks/:id", auth, async (req, res) => {
+    try {
+        const task = await Task.findOneAndDelete({ _id: req.params.id, owner: req.user._id })
         if (!task) {
             res.status(404).send()
             return
@@ -15,7 +34,7 @@ router.delete("/tasks/:id", async (req, res) => {
     }
 })
 
-router.patch("/tasks/:id", async (req, res) => {
+router.patch("/tasks/:id", auth, async (req, res) => {
     const updates = Object.keys(req.body)
     const allowedUpdates = ['description', 'completed']
     const isValidOperation = updates.every((updateKeyName) => {
@@ -26,33 +45,37 @@ router.patch("/tasks/:id", async (req, res) => {
     }
 
     try {
-        const task = await Task.findById(req.params.id)
-        updates.forEach((update) => {
-            task[update] = req.body[update]
-        })
-        await task.save()
+        const task = await Task.findOne({ _id: req.params.id, owner: req.user._id })
         if (!task) {
             res.status(404).send()
             return
         }
+        
+        updates.forEach((update) => {
+            task[update] = req.body[update]
+        })
+        await task.save()
         res.status(200).send(task)
     } catch (e) {
         res.status(400).send(e)
     }
 })
 
-router.get("/tasks", async (req, res) => {
+router.get("/tasks", auth, async (req, res) => {
     try {
-        const tasks = await Task.find({})
+        const tasks = await Task.find({ owner: req.user._id })
+        /* You could also replace the line above with:
+        **      await req.user.populate("myTasks").execPopulate()
+        */
         res.status(200).send(tasks)
     } catch (e) {
         res.status(500).send(e)
     }
 })
 
-router.get("/tasks/:id", async (req, res) => {
+router.get("/tasks/:id", auth, async (req, res) => {
     try {
-        const task = await Task.findbyID(req.params.id)
+        const task = await Task.findOne({ _id: req.params.id, owner: req.user._id })
         if (!task) {
             res.status(404).send()
             return
@@ -60,17 +83,6 @@ router.get("/tasks/:id", async (req, res) => {
         res.status(200).send(task)
     } catch (e) {
         res.status(500).send(error)
-    }
-})
-
-
-router.post('/tasks', async (req, res) => {
-    try {
-        const task = new Task(req.body)
-        await task.save()
-        res.status(201).send(task)
-    } catch (e) {
-        res.status(400).send(error)
     }
 })
 

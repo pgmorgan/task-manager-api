@@ -61,13 +61,81 @@ router.patch("/tasks/:id", auth, async (req, res) => {
     }
 })
 
+
+/*  This is an alternative version of the router.get("/tasks"...) method.
+**  I have included this alternative here for learning purposes.
+**
+**
+
 router.get("/tasks", auth, async (req, res) => {
+    const filter = {
+        owner:  req.user._id
+    }
+
+    if (req.query.completed === 'true') {
+        filter.completed = true
+    } else if (req.query.completed === 'false') {
+        filter.completed = false
+    } else if (req.query.completed != "") {
+        res.status(404).send()
+        return
+    }
+
     try {
-        const tasks = await Task.find({ owner: req.user._id })
-        /* You could also replace the line above with:
-        **      await req.user.populate("myTasks").execPopulate()
+        const tasks = await Task.find(filter)
+        res.send(tasks)
+    } catch (e) {
+        res.status(500).send()
+    }
+})
+
+**
+**
+*/
+
+/*  GET /tasks?completed=true
+**  GET /tasks?limit=10&skip=0
+**  GET /tasks?sortBy=createdAt_asc
+**  GET /tasks?sortBy=updatedAt_desc
+*/
+router.get("/tasks", auth, async (req, res) => {
+    const match = {}
+    const sort = {}
+
+    /*  NB: req.query.completed is a STRING.  Hence if the string
+    **  is non-empty then the if statement will resolve to true
+    */
+    if (req.query.completed) {
+        if (req.query.completed === "true") {
+            match.completed = true
+        } else if (req.query.completed === "false") {
+            match.completed = false
+        }
+    }
+
+    if (req.query.sortBy) {
+        const parts = req.query.sortBy.split('_')
+        sort[parts[0]] = (parts[1] === "asc") ? 1 : -1
+    }
+
+    try {
+        /* You could also replace the lines below with:
+        **      const tasks = await Task.find({ owner: req.user._id, completed: false })
+        **      res.status(200).send(tasks)
         */
-        res.status(200).send(tasks)
+        await req.user.populate({
+            path:   'myTasks',
+            match:  match,
+            options: {
+                /*  if req.query.limit is not provided then the following resolves 
+                **  to NaN (not a number) and mongoose proceeds to ignore the limit.
+                */
+                limit:  parseInt(req.query.limit),
+                skip:   parseInt(req.query.skip),
+                sort:   sort
+            },
+        }).execPopulate()
+        res.status(200).send(req.user.myTasks)
     } catch (e) {
         res.status(500).send(e)
     }

@@ -9,24 +9,25 @@ const port = process.env.PORT || 3000
 
 
 const multer = require("multer")
+
 const upload = multer({
     dest:   "img",
     limits: {
         fileSize:   1000000,       
     },
     fileFilter(req, file, callback) {
+        if (!file.originalname.match(/\.(doc|docx)$/)) {
+            return callback(new Error("Please upload a PDF"))
+        }
         
-
-        /* How to send an error */
-        // callback(new Error("File must be a PDF"))
-        /* How to accept the file */
-        // callback(undefined, true)
-        /* How to reject the file */
-        // callback(undefined, false)
+        callback(undefined, true)
     },
 })
+
 app.post('/upload', upload.single("upload"), (req, res) => {
     res.send()   
+}, (error, req, res, next) => {
+    res.status(400).send({ error: error.message })
 })
 
 

@@ -73,6 +73,7 @@ userSchema.methods.toJSON = function () {
 
     delete userObject.password
     delete userObject.tokens
+    delete userObject.avatar
 
     return userObject
 }
@@ -80,7 +81,7 @@ userSchema.methods.toJSON = function () {
 // "methods" methods are available on the instance "user"
 userSchema.methods.generateAuthToken = async function () {
     const user = this
-    const token = jwt.sign({ _id: user._id.toString() }, "uniqueKey")
+    const token = jwt.sign({ _id: user._id.toString() }, JWT_SECRET)
     user.tokens = user.tokens.concat({ token: token })
     await user.save()
 

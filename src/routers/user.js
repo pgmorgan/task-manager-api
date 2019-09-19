@@ -1,20 +1,28 @@
 const express = require('express')
 const multer = require("multer")
+const sharp = require("sharp")
 const User = require("../models/user")
 const auth = require("../middleware/auth")
+const { sendWelcomeEmail, sendGoodbyeEmail } = require('../emails/account')
 const router = new express.Router()
+
+/*  CREATE USER ACCOUNT */
 
 router.post('/users', async (req, res) => {
     const user = new User(req.body)
 
     try {
         const token = await user.generateAuthToken()
-        //user.generateAuthToken() calls 'await user.save()' so no need to save() here.
+        /*  NB: sendWelcomeEmail() is asynchronous but there's no need to await it */
+        sendWelcomeEmail(user.email, user.name)
+        /*  user.generateAuthToken() calls 'await user.save()' so no need to save() here.   */
         res.status(201).send({ user: user, token: token })
     } catch(e) {
         res.status(400).send(e)
     }
 })
+
+/*  LOGIN   */
 
 router.post("/users/login", async (req, res) => {
     try {
@@ -25,6 +33,8 @@ router.post("/users/login", async (req, res) => {
         res.status(400).send(e)
     }
 })
+
+/*  LOGOUT FROM CURRENT BROWSER  */
 
 router.post("/users/logout", auth, async (req, res) => {
     try {
@@ -39,6 +49,8 @@ router.post("/users/logout", auth, async (req, res) => {
     }
 })
 
+/*  LOGOUT OF ALL SESSIONS / BROWSERS  */
+
 router.post("/users/logoutAll", auth, async (req, res) => {
     try {
         req.user.tokens = []
@@ -49,6 +61,8 @@ router.post("/users/logoutAll", auth, async (req, res) => {
     }
 })
 
+/*  GET USER PROFILE INFO   */
+
 /*  The third arg of router.get - async (req, res) => () - only gets called if 
 **  the next() function inside auth is called.
 */
@@ -56,7 +70,7 @@ router.get("/users/me", auth, async (req, res) => {
     res.send(req.user)
 })
 
-
+/*  UPDATE USER PROFILE INFO    */
 
 router.patch("/users/me", auth, async (req, res) => {
     /*  Object.keys(theActualObject) returns an array of just the keys in the key value pair.
@@ -85,6 +99,8 @@ router.patch("/users/me", auth, async (req, res) => {
     }
 })
 
+/*  DELETE USER ACCOUNT */
+
 /*  We are able to access "req.user._id" because in the auth() middleware function
 **  we attached "user" (as well as "token") to the request object.
 **  This is fundamentally the architecture of this web App from an authentication
@@ -98,12 +114,20 @@ router.patch("/users/me", auth, async (req, res) => {
 */
 router.delete("/users/me", auth, async (req, res) => {
     try {
+        /*  In the following line, the string arguments are passed by value rather than reference.
+        **  That's why we don't need to await that process to proceed and remove() the user
+        **  on the next line.  In JS, it seems objects and arrays are passed by reference, other 
+        **  types are passed by value.
+        */
+        sendGoodbyeEmail(req.user.email, req.user.name)
         await req.user.remove()
         res.status(200).send(req.user)
     } catch (e) {
         res.status(500).send()
     }
 })
+
+/*  UPLOAD USER AVATAR IMAGE    */
 
 const upload = multer({
     // dest:   "avatars",
@@ -119,18 +143,23 @@ const upload = multer({
 })
 
 router.post("/users/me/avatar", auth, upload.single("myAvatar"), async (req, res) => {
-    req.user.avatar = req.file.buffer
+    const buffer = await sharp(req.file.buffer).resize({ width: 250, height: 250 }).png().toBuffer()
+    req.user.avatar = buffer
     await req.user.save()
     res.status(200).send()
 }, (error, req, res, next) => {
     res.status(400).send({ error: error.message })
 })
 
+/*  DELETE USER AVATAR IMAGE    */
+
 router.delete("/users/me/avatar", auth, async (req, res) => {
     req.user.avatar = undefined
     await req.user.save()
     res.status(200).send()
 })
+
+/*  GET USER AVATAR IMAGE   */
 
 router.get("/users/:id/avatar", async (req, res) => {
     try {
@@ -140,7 +169,7 @@ router.get("/users/:id/avatar", async (req, res) => {
         }
 
         /*  So far express has been setting the Content-Type header for us */
-        res.set("Content-Type", "image/jpg")
+        res.set("Content-Type", "image/png")
         res.send(user.avatar)
     } catch (e) {
         res.status(404).send()

@@ -3,6 +3,7 @@ const Task = require("../models/task")
 const auth = require("../middleware/auth")
 const router = new express.Router()
 
+/*  POST - CREATE TASK  */
 router.post('/tasks', auth, async (req, res) => {
     const task = new Task({
         /*  ES6 spread operator is like what Todd McCleod calls "Unfurling" in Golang.
@@ -21,6 +22,7 @@ router.post('/tasks', auth, async (req, res) => {
     }
 })
 
+/*  DELETE - DELETE TASK    */
 router.delete("/tasks/:id", auth, async (req, res) => {
     try {
         const task = await Task.findOneAndDelete({ _id: req.params.id, owner: req.user._id })
@@ -34,6 +36,7 @@ router.delete("/tasks/:id", auth, async (req, res) => {
     }
 })
 
+/*  PATCH - UPDATE TASK */
 router.patch("/tasks/:id", auth, async (req, res) => {
     const updates = Object.keys(req.body)
     const allowedUpdates = ['description', 'completed']
@@ -61,42 +64,11 @@ router.patch("/tasks/:id", auth, async (req, res) => {
     }
 })
 
-
-/*  This is an alternative version of the router.get("/tasks"...) method.
-**  I have included this alternative here for learning purposes.
-**
-**
-
-router.get("/tasks", auth, async (req, res) => {
-    const filter = {
-        owner:  req.user._id
-    }
-
-    if (req.query.completed === 'true') {
-        filter.completed = true
-    } else if (req.query.completed === 'false') {
-        filter.completed = false
-    } else if (req.query.completed != "") {
-        res.status(404).send()
-        return
-    }
-
-    try {
-        const tasks = await Task.find(filter)
-        res.send(tasks)
-    } catch (e) {
-        res.status(500).send()
-    }
-})
-
-**
-**
-*/
-
-/*  GET /tasks?completed=true
-**  GET /tasks?limit=10&skip=0
-**  GET /tasks?sortBy=createdAt_asc
-**  GET /tasks?sortBy=updatedAt_desc
+/*  GET - RETREIVE TASKS. URL OPTIONS:
+**          /tasks?completed=true
+**          /tasks?limit=10&skip=0
+**          /tasks?sortBy=createdAt_asc
+**          /tasks?sortBy=updatedAt_desc
 */
 router.get("/tasks", auth, async (req, res) => {
     const match = {}
@@ -141,6 +113,7 @@ router.get("/tasks", auth, async (req, res) => {
     }
 })
 
+/*  GET - RETREIVE SPECIFIC TASK BY ID  */
 router.get("/tasks/:id", auth, async (req, res) => {
     try {
         const task = await Task.findOne({ _id: req.params.id, owner: req.user._id })

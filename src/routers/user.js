@@ -3,39 +3,38 @@ const multer = require("multer")
 const sharp = require("sharp")
 const User = require("../models/user")
 const auth = require("../middleware/auth")
-const { sendWelcomeEmail, sendGoodbyeEmail } = require('../emails/account')
+const { sendWelcomeEmail, sendCancellationEmail } = require("../emails/account")
+
 const router = new express.Router()
 
-/*  CREATE USER ACCOUNT */
-
+/*  POST - CREATE USER ACCOUNT  */
 router.post('/users', async (req, res) => {
     const user = new User(req.body)
 
     try {
+        await user.save()
         const token = await user.generateAuthToken()
-        /*  NB: sendWelcomeEmail() is asynchronous but there's no need to await it */
+        /*  sendWelcomeEmail is asynchronous but there's no need to await for it */
         sendWelcomeEmail(user.email, user.name)
-        /*  user.generateAuthToken() calls 'await user.save()' so no need to save() here.   */
+        /*  user.generateAuthToken() calls 'await user.save()' so no need to save() above in fact. */
         res.status(201).send({ user: user, token: token })
     } catch(e) {
         res.status(400).send(e)
     }
 })
 
-/*  LOGIN   */
-
+/*  POST - LOGIN USER   */
 router.post("/users/login", async (req, res) => {
     try {
         const user = await User.findByCredentials(req.body.email, req.body.password)
         const token = await user.generateAuthToken()
-        res.send( {user: user, token: token} )
+        res.status(200).send( {user: user, token: token} )
     } catch (e) {
         res.status(400).send(e)
     }
 })
 
-/*  LOGOUT FROM CURRENT BROWSER  */
-
+/*  POST - LOGOUT USER  */
 router.post("/users/logout", auth, async (req, res) => {
     try {
         req.user.tokens = req.user.tokens.filter((tokenObj) => {
@@ -43,35 +42,32 @@ router.post("/users/logout", auth, async (req, res) => {
         })
         await req.user.save()
 
-        res.send()
+        res.status(200).send()
     } catch (e) {
         res.status(500).send()
     }
 })
 
-/*  LOGOUT OF ALL SESSIONS / BROWSERS  */
-
+/*  POST - LOGOUT USER FROM ALL SESSIONS/BROWSERS   */
 router.post("/users/logoutAll", auth, async (req, res) => {
     try {
         req.user.tokens = []
         await req.user.save()
-        res.send()
+        res.status(200).send()
     } catch (e) {
         res.status(500).send()
     }
 })
 
-/*  GET USER PROFILE INFO   */
-
+/*  GET - RETRIEVE USER INFO    */
 /*  The third arg of router.get - async (req, res) => () - only gets called if 
 **  the next() function inside auth is called.
 */
 router.get("/users/me", auth, async (req, res) => {
-    res.send(req.user)
+    res.status(200).send(req.user)
 })
 
-/*  UPDATE USER PROFILE INFO    */
-
+/*  PATCH - UPDATE USER INFO    */
 router.patch("/users/me", auth, async (req, res) => {
     /*  Object.keys(theActualObject) returns an array of just the keys in the key value pair.
     **  This is a built-in method in Javascript, no libraries required it seems.
@@ -99,8 +95,6 @@ router.patch("/users/me", auth, async (req, res) => {
     }
 })
 
-/*  DELETE USER ACCOUNT */
-
 /*  We are able to access "req.user._id" because in the auth() middleware function
 **  we attached "user" (as well as "token") to the request object.
 **  This is fundamentally the architecture of this web App from an authentication
@@ -112,14 +106,11 @@ router.patch("/users/me", auth, async (req, res) => {
 **  (not to it's body but to the base request object).  Any response that requires authentication
 **  can check that token and proceed.
 */
+
+/*  DELETE - DELETE USER ACCOUNT    */
 router.delete("/users/me", auth, async (req, res) => {
     try {
-        /*  In the following line, the string arguments are passed by value rather than reference.
-        **  That's why we don't need to await that process to proceed and remove() the user
-        **  on the next line.  In JS, it seems objects and arrays are passed by reference, other 
-        **  types are passed by value.
-        */
-        sendGoodbyeEmail(req.user.email, req.user.name)
+        sendCancellationEmail(req.user.email, req.user.name)
         await req.user.remove()
         res.status(200).send(req.user)
     } catch (e) {
@@ -127,8 +118,7 @@ router.delete("/users/me", auth, async (req, res) => {
     }
 })
 
-/*  UPLOAD USER AVATAR IMAGE    */
-
+/*  POST - UPLOAD USER AVATAR   */
 const upload = multer({
     // dest:   "avatars",
     limits: {
@@ -150,17 +140,16 @@ router.post("/users/me/avatar", auth, upload.single("myAvatar"), async (req, res
 }, (error, req, res, next) => {
     res.status(400).send({ error: error.message })
 })
+/*  END OF POST - UPLOAD USER AVATAR    */
 
-/*  DELETE USER AVATAR IMAGE    */
-
+/*  DELETE - DELETE USER AVATAR */
 router.delete("/users/me/avatar", auth, async (req, res) => {
     req.user.avatar = undefined
     await req.user.save()
     res.status(200).send()
 })
 
-/*  GET USER AVATAR IMAGE   */
-
+/*  GET - FETCH USER AVATAR */
 router.get("/users/:id/avatar", async (req, res) => {
     try {
         const user = await User.findById(req.params.id)
@@ -170,7 +159,7 @@ router.get("/users/:id/avatar", async (req, res) => {
 
         /*  So far express has been setting the Content-Type header for us */
         res.set("Content-Type", "image/png")
-        res.send(user.avatar)
+        res.status(200).send(user.avatar)
     } catch (e) {
         res.status(404).send()
     }

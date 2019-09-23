@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
 const Task = require("../models/task")
 
+/*  MONGOOSE USER SCHEMA */
 const userSchema = new mongoose.Schema({
     name:   {
         type:       String,
@@ -61,6 +62,7 @@ userSchema.virtual("myTasks", {
     foreignField:   "owner",
 })
 
+/*  EXPRESS TOJSON  */
 /*  When we pass a JS object off to express with res.send(myObj),
 **  In the background, express is making a call to JSON.stringify(myObj).
 **  "toJSON" seems to be a built-in function in Express which is called
@@ -78,17 +80,17 @@ userSchema.methods.toJSON = function () {
     return userObject
 }
 
-// "methods" methods are available on the instance "user"
+/*  GENERATE AUTH TOKENS - "METHODS" METHOD AVAILABLE ON INSTANCES OF USER    */
 userSchema.methods.generateAuthToken = async function () {
     const user = this
-    const token = jwt.sign({ _id: user._id.toString() }, JWT_SECRET)
+    const token = jwt.sign({ _id: user._id.toString() }, process.env.JWT_SECRET)
     user.tokens = user.tokens.concat({ token: token })
     await user.save()
 
     return token
 }
 
-// "static" methods are available on the model "User"
+/*  FIND BY CREDENTIALS - "STATICS" METHOD AVAILABLE ON THE MODEL USER  */
 userSchema.statics.findByCredentials = async (email, password) => {
     const user = await User.findOne({ email: email })
     if (!user) {
@@ -103,13 +105,16 @@ userSchema.statics.findByCredentials = async (email, password) => {
     return user
 }
 
-//Certain mongoose methods bypass more advanced features like middleware,
-//such as our update route which will bypass this userSchema.pre
+/*  Certain mongoose methods bypass more advanced features like middleware,
+    such as our update route which will bypass this userSchema.pre
 
-//findById and update directly modify the database
+    findById and update directly modify the database
 
-//Needs to be a regular function below, and not an arrow function
-//because arrow functions don't bind the 'this' argument.
+    Needs to be a regular function below, and not an arrow function
+    because arrow functions don't bind the 'this' argument.
+*/
+
+/*  MIDDLEWARE CALLED BEFORE SAVE() METHOD ON USER INSTANCE */
 userSchema.pre('save', async function(next) {
     const user = this
 
@@ -123,6 +128,7 @@ userSchema.pre('save', async function(next) {
     // processes have also been completed.  It is thus a similar but different from "await"
 })
 
+/*  MIDDLEWARE CALLED BEFORE REMOVE() METHOD ON USER INSTANCE */
 userSchema.pre('remove', async function(next) {
     const user = this
     await Task.deleteMany({ owner: user._id })
@@ -132,15 +138,3 @@ userSchema.pre('remove', async function(next) {
 const User = mongoose.model("User", userSchema)
 
 module.exports = User
-
-// const peter = new User({
-//     name:   "Peter",
-//     email:  "petergm@gmail.com",
-//     password:   "hellopass",
-// })
-
-// peter.save().then((result) => {
-//     console.log(result)
-// }).catch((error) => {
-//     console.log("Error!", error)
-// })

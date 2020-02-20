@@ -41,7 +41,7 @@ Alternatively you may name `config/prod.env` or `config/staging.env` and appropr
 
 ### API USAGE
 
-A front-end has been developed for this REST API with Vue.js, and can be accessed at [tasktracker.io](http://tasktracker.io).  Front-end code repository can be found here: [https://github.com/pgmorgan/task-manager-api-frontend](https://github.com/pgmorgan/task-manager-api-frontend).  Also, all HTTP requests can be made from software such as [Postman](www.getpostman.com).  Postman is free and exists for all major operating systems.
+A front-end has been developed for this REST API with Vue.js.  The Front-end code repository can be found here: [https://github.com/pgmorgan/task-manager-api-frontend](https://github.com/pgmorgan/task-manager-api-frontend).  Also, all HTTP requests can be made from software such as [Postman](www.getpostman.com).  Postman is free and exists for all major operating systems.
 
 For feedback or inquiries please contact Peter at petergm@gmail.com
 	

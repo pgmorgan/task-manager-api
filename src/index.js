@@ -1,5 +1,6 @@
 const express = require("express")
 const bcrypt = require("bcryptjs")
+const cors = require("cors")
 require("./db/mongoose")
 const userRouter = require('./routers/user')
 const taskRouter = require("./routers/task")
@@ -9,6 +10,7 @@ const app = express()
 
 /*	SETUP EXPRESS ROUTERS	*/
 app.use(express.json())
+app.use(cors())
 app.use(userRouter)
 app.use(taskRouter)
     
